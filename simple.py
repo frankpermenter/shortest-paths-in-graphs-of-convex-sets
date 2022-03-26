@@ -6,6 +6,84 @@ from spp.convex_functions import TwoNorm, SquaredTwoNorm
 from spp.graph import GraphOfConvexSets
 from spp.shortest_path import ShortestPathProblem
 import sys
+import graphviz
+import itertools
+from itertools import tee
+
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+
+#https://en.wikipedia.org/wiki/Line_graph
+def SaveGraph(G, filename):
+    plt.figure(figsize=(4,5))
+    G.draw_sets()
+    G.draw_edges()
+    plt.savefig(filename, bbox_inches='tight')
+
+
+def SaveAsGraph(G, filename):
+    L = graphviz.Digraph()
+    for vertex, set in G.sets.items():
+        L.node(f'vertex')
+
+    for i, e in enumerate(G.edges):
+        print(e[0], e[1])
+        L.edge(e[0], e[1], f'{i}')
+
+    L.render(filename)
+
+
+def MakeLineGraph(G):
+    L = graphviz.Graph()
+    for i, e in enumerate(G.edges):
+        L.node(f'{i}')
+
+    for vertex, set in G.sets.items():
+        edges_in = G.incoming_edges(vertex)[1]
+        edges_out = G.outgoing_edges(vertex)[1]
+        print( (vertex, edges_out))
+        #for ei, ej in pairwise(edges_in):
+        for ei, ej in itertools.combinations(edges_in, 2):
+                L.edge(f'{ei}', f'{ej}', f'{vertex}')
+
+        for ei, ej in itertools.combinations(edges_out, 2):
+                print( (ei, ej))
+                L.edge(f'{ei}', f'{ej}', f'{vertex}')
+
+    L.render('line_graph')
+    SaveAsGraph(G, 'digraph')
+
+
+#def MakeLineGraph2(G):
+#    L = GraphOfConvexSets()
+#    sets = []
+#    vertices = []
+#    row = 0
+#    spacing = 2
+#    for i, e in enumerate(G.edges):
+#        sets.append(Singleton((i*spacing, row)))
+#        row =  i % 3
+#        vertices.append(f'{i}')
+#    print(sets)
+#    print(vertices)
+#    L.add_sets(sets, vertices)
+#
+#    l = TwoNorm(H)
+#    for vertex, set in G.sets.items():
+#        edges_in = G.incoming_edges(vertex)[1]
+#        edges_out = G.outgoing_edges(vertex)[1]
+#        for ei in edges_in:
+#            for ej in edges_in:
+#                print(ei, ej)
+#                if (ei == ej):
+#                    continue
+#                L.add_edge(f'{ei}', f'{ej}', l)
+#
+#    SaveGraph(L, 'dual.pdf')
 
 # convex sets
 singletons = (
@@ -40,7 +118,7 @@ edges = {
     's': ('p0', 'p1', 'p2'),
     'p0': ('e0',),
     'p1': ('p2', 'e0'),
-    'p2': ('p1', 't', 'e0'),
+    'p2': ('t', 'e0'),
     'e0': ('t' ),
 }
 for u, vs in edges.items():
@@ -51,6 +129,10 @@ for u, vs in edges.items():
 plt.figure()
 G.draw_sets()
 G.draw_edges()
+
+MakeLineGraph(G)
+SaveGraph(G, 'graph.pdf')
+sys.exit()
 #G.label_sets()
 
 #spp = ShortestPathProblem(G, relaxation=0)
