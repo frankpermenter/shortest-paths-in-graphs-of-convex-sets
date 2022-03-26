@@ -1,5 +1,5 @@
 import numpy as np
-from pydrake.all import MathematicalProgram, MosekSolver, eq
+from pydrake.all import MathematicalProgram, MosekSolver, OsqpSolver, eq
 
 class ShortestPathVariables():
 
@@ -89,7 +89,9 @@ class ShortestPathConstraints():
                     y_out = sum(vars.y[edges_out])
                     z_in = sum(vars.z[edges_in])
                     residual = y_out - z_in
-                    sp_cons.append(prog.AddLinearConstraint(eq(residual, 0)))
+
+                    for r in residual:
+                        sp_cons.append(prog.AddLinearConstraint(r == 0))
 
             # degree constraints
             if len(edges_out) > 0:
@@ -179,6 +181,7 @@ class ShortestPathProblem():
     def solve(self):
 
         result = MosekSolver().Solve(self.prog)
+        #result2 = OsqpSolver().Solve(self.prog)
         cost = result.get_optimal_cost()
         time = result.get_solver_details().optimizer_time
         primal = ShortestPathVariables.from_result(result, self.vars)

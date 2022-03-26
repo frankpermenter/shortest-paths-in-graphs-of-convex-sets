@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from itertools import product
 from scipy.spatial import ConvexHull, HalfspaceIntersection
-from pydrake.all import Expression, MathematicalProgram, MosekSolver, eq, le
+from pydrake.all import Expression, MathematicalProgram, MosekSolver, OsqpSolver, eq, le
 
 class ConvexSet():
 
@@ -65,7 +65,11 @@ class Singleton(ConvexSet):
         pass
 
     def add_perspective_constraint(self, prog, scale, x):
-        return prog.AddLinearConstraint(eq(x, self.center * scale))
+        return_value = 0
+        for i, xi in enumerate(x):
+            return_value = prog.AddLinearConstraint(xi ==  self.center[i] * scale)
+            
+        return return_value
 
     def _plot(self, **kwargs):
         plt.scatter(*self.center, c='k')
