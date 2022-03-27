@@ -86,45 +86,92 @@ def MakeLineGraph(G):
 #    SaveGraph(L, 'dual.pdf')
 
 # convex sets
-singletons = (
-    Singleton((0, 0)),
-    Singleton((9, 0)),
-)
-polyhedra = (
-    Polyhedron.from_vertices(([1, 0], [1, -2], [3, -2], [3, -1])),
-    Polyhedron.from_vertices(([4, -2], [5, -4], [3, -4], [2, -3])),
-    Polyhedron.from_vertices(([2, 2], [1, 3], [2, 4], [4, 4], [4, 3])),
-)
-ellipsoids = (
-    Ellipsoid((4, 1), ([1, 0], [0, 1])),
-)
-sets = singletons + polyhedra + ellipsoids
+if 1:
+    singletons = (
+        Singleton((0, 0)),
+        Singleton((9, 0)),
+    )
+    polyhedra = (
+        Polyhedron.from_vertices(([1, 0], [1, -2], [3, -2], [3, -1])),
+        Polyhedron.from_vertices(([4, -2], [5, -4], [3, -4], [2, -3])),
+    )
+    ellipsoids = (
+        Ellipsoid((4, 1), ([1, 0], [0, 1])),
+    )
+    sets = singletons + polyhedra + ellipsoids
 
-# label for the vertices
-vertices = ['s', 't']
-vertices += [f'p{i}' for i in range(len(polyhedra))]
-vertices += [f'e{i}' for i in range(len(ellipsoids))]
+    # label for the vertices
+    vertices = ['s', 't']
+    vertices += [f'p{i}' for i in range(len(polyhedra))]
+    vertices += [f'e{i}' for i in range(len(ellipsoids))]
 
-# add convex sets to the graph
-G = GraphOfConvexSets()
-G.add_sets(sets, vertices)
-G.set_source('s')
-G.set_target('t')
+    # add convex sets to the graph
+    G = GraphOfConvexSets()
+    G.add_sets(sets, vertices)
+    G.set_source('s')
+    G.set_target('t')
 
-# edges
-H = np.hstack((np.eye(2), -np.eye(2)))
-l = TwoNorm(H)
-edges = {
-    's': ('p0', 'p1', 'p2'),
-    'p0': ('e0',),
-    'p1': ('p2', 'e0'),
-    'p2': ('t', 'e0'),
-    'e0': ('t' ),
-}
-for u, vs in edges.items():
-    for v in vs:
-        G.add_edge(u, v, l)
-        
+    # edges
+    H = np.hstack((np.eye(2), -np.eye(2)))
+    l = TwoNorm(H)
+    edges = {
+        's': ('p0', 'p1', 't'),
+        'p0': ('e0',),
+        'p1': ('t', 'e0'),
+        'e0': ('t' ),
+    }
+    for u, vs in edges.items():
+        for v in vs:
+            G.add_edge(u, v, l)
+else:
+# convex sets
+    singletons = (
+        Singleton((0, 0)),
+        Singleton((9, 0)),
+    )
+    polyhedra = (
+        Polyhedron.from_vertices(([1, 0], [1, -2], [3, -2], [3, -1])),
+        Polyhedron.from_vertices(([4, -2], [5, -4], [3, -4], [2, -3])),
+        Polyhedron.from_vertices(([2, 2], [1, 3], [2, 4], [4, 4], [4, 3])),
+        Polyhedron.from_vertices(([5, 4], [7, 4], [6, 3])),
+        Polyhedron.from_vertices(([7, 2], [8, 2], [9, 3], [8, 4])),
+    )
+    ellipsoids = (
+        Ellipsoid((4, 1), ([1, 0], [0, 1])),
+        Ellipsoid((7, -2), ([.25, 0], [0, 1])),
+    )
+    sets = singletons + polyhedra + ellipsoids
+
+    # label for the vertices
+    vertices = ['s', 't']
+    vertices += [f'p{i}' for i in range(len(polyhedra))]
+    vertices += [f'e{i}' for i in range(len(ellipsoids))]
+
+    # add convex sets to the graph
+    G = GraphOfConvexSets()
+    G.add_sets(sets, vertices)
+    G.set_source('s')
+    G.set_target('t')
+
+    # edges
+    H = np.hstack((np.eye(2), -np.eye(2)))
+    l = TwoNorm(H)
+    edges = {
+        's': ('p0', 'p1', 'p2'),
+        'p0': ('e1',),
+        'p1': ('p2', 'e0', 'e1'),
+        'p2': ('p1', 'p3', 'e0'),
+        'p3': ('t', 'p2', 'p4', 'e1'),
+        'p4': ('t', 'e0'),
+        'e0': ('p3', 'p4', 'e1'),
+        'e1': ('t', 'p4', 'e0')
+    }
+    for u, vs in edges.items():
+        for v in vs:
+            G.add_edge(u, v, l)
+
+
+
 # draw convex sets and edges
 plt.figure()
 G.draw_sets()
@@ -132,12 +179,12 @@ G.draw_edges()
 
 MakeLineGraph(G)
 SaveGraph(G, 'graph.pdf')
-sys.exit()
 #G.label_sets()
 
 #spp = ShortestPathProblem(G, relaxation=0)
 spp = ShortestPathProblem(G, relaxation=1)
 sol = spp.solve()
+sys.exit()
 
 print('Cost:', sol.cost)
 print('\nFlows:')

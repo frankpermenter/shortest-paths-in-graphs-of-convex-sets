@@ -181,7 +181,7 @@ class ShortestPathProblem():
     def solve(self):
 
         result = MosekSolver().Solve(self.prog)
-        #result2 = OsqpSolver().Solve(self.prog)
+        result2 = OsqpSolver().Solve(self.prog)
         cost = result.get_optimal_cost()
         time = result.get_solver_details().optimizer_time
         primal = ShortestPathVariables.from_result(result, self.vars)
