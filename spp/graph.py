@@ -51,6 +51,8 @@ class GraphOfConvexSets():
         if length is None:
             length = Constant(0)
 
+        print(u)
+        print(v)
         assert u in self.sets and v in self.sets
         assert isinstance(length, ConvexFunction)
         self.lengths[(u, v)] = length

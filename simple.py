@@ -93,10 +93,8 @@ if 1:
     )
     polyhedra = (
         Polyhedron.from_vertices(([1, 0], [1, -2], [3, -2], [3, -1])),
-        Polyhedron.from_vertices(([4, -2], [5, -4], [3, -4], [2, -3])),
     )
     ellipsoids = (
-        Ellipsoid((4, 1), ([1, 0], [0, 1])),
     )
     sets = singletons + polyhedra + ellipsoids
 
@@ -115,13 +113,13 @@ if 1:
     H = np.hstack((np.eye(2), -np.eye(2)))
     l = TwoNorm(H)
     edges = {
-        's': ('p0', 'p1', 't'),
-        'p0': ('e0',),
-        'p1': ('t', 'e0'),
-        'e0': ('t' ),
+        's': ('p0',),
+        'p0': ('t',),
     }
+    print(edges)
     for u, vs in edges.items():
         for v in vs:
+            print((u, v))
             G.add_edge(u, v, l)
 else:
 # convex sets
