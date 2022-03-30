@@ -53,6 +53,7 @@ for u, vs in edges.items():
     for v in vs:
         G.add_edge(u, v, l)
         
+        
 # draw convex sets and edges
 plt.figure()
 G.draw_sets()

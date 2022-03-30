@@ -1,6 +1,7 @@
 #include <Eigen/Dense>
 #include <iostream>
 #include "conex/debug_macros.h"
+#include "example_graphs.h"
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
@@ -20,6 +21,7 @@ struct ProblemData {
   std::vector<Node> topology;
   std::vector<Edge> edges;
 };
+
 class FlowConstraints {
  public:
   FlowConstraints(const ProblemData* data) : data_(data) { AssembleConstraintMatrix(); }
@@ -36,8 +38,7 @@ class FlowConstraints {
       }
       ++i;
     }
-    // return y;
-    return constraint_matrix_ * x;
+    return y;
   }
     
   VectorXd EvaluateTranspose(const VectorXd& x) const { 
@@ -48,8 +49,7 @@ class FlowConstraints {
       y(i) =  x(edge.first) - x(edge.second);
       ++i;
     }
-    //return y;
-    return constraint_matrix_.transpose() * x;
+    return y;
   }
 
  private:
@@ -66,7 +66,6 @@ class FlowConstraints {
       }
       ++i;
     }
-    DUMP(constraint_matrix_);
   }
   MatrixXd constraint_matrix_;
   const ProblemData* data_;
@@ -91,7 +90,8 @@ class NodeHessians {
 };
 
 
-int SolveForDualVariables(const ProblemData& problem_data,   const Iterate& iterate) {
+int SolveForDualVariables(const ProblemData& problem_data,   const Iterate& iterate, 
+                          int iteration_limit) {
 
   FlowConstraints F(&problem_data);
   NodeHessians H(&problem_data); H.AssembleAndFactorHessians(iterate);
@@ -113,7 +113,7 @@ int SolveForDualVariables(const ProblemData& problem_data,   const Iterate& iter
   VectorXd p(num_rows); p = r;
 
 
-  for (int i = 0; i < max_iter; i++) {
+  for (int i = 0; i < iteration_limit; i++) {
     double norm_sqr_r  = r.dot(r);
     double alpha = norm_sqr_r/p.dot(f(p));
     s +=  alpha * p;
@@ -146,6 +146,19 @@ vector<Edge> LineGraph(int number_of_nodes) {
 }
 
 
+int GetMaxNodeIndex(const vector<Edge>& edge_list) {
+  int max = 0;
+  for (const auto& edge : edge_list) {
+    if (edge.first > max) {
+      max = edge.first;
+    }
+    if (edge.second > max) {
+      max = edge.second;
+    }
+  }
+  return max + 1;
+}
+
 vector<Node> MakeNodeList(const vector<Edge>& edge_list, int num_nodes) {
   vector<Node> y(num_nodes);
   int i = 0;
@@ -156,14 +169,16 @@ vector<Node> MakeNodeList(const vector<Edge>& edge_list, int num_nodes) {
   }
   return y;
 }
+
 int DoMain() {
   ProblemData problem_data;
-  problem_data.num_node_variables = 3;
-  problem_data.edges = LineGraph(problem_data.num_node_variables);
+  /*problem_data.edges = LineGraph(3);*/
+  problem_data.edges = PaperExample();
+  problem_data.num_node_variables = GetMaxNodeIndex(problem_data.edges);
   problem_data.num_flow_variables = problem_data.edges.size();
   problem_data.topology = MakeNodeList(problem_data.edges, problem_data.num_node_variables);
   Iterate iterate;
-  SolveForDualVariables(problem_data, iterate);
+  SolveForDualVariables(problem_data, iterate, 10);
 }
 }
 
