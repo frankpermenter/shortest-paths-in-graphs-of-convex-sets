@@ -1,4 +1,5 @@
 #include <Eigen/Dense>
+#include <Eigen/Sparse>
 #include <iostream>
 #include "conex/debug_macros.h"
 #include "example_graphs.h"
@@ -10,6 +11,16 @@ using std::vector;
 using Edge = std::pair<int, int>; 
 
 namespace conex {
+
+struct Iterate {
+  VectorXd flow_variables;
+  double inv_sqrt_mu;
+};
+
+struct DualSolverConfig {
+  int iteration_limit;
+};
+
 struct Node {
   std::vector<int> incoming_edges;
   std::vector<int> outgoing_edges;
@@ -17,14 +28,26 @@ struct Node {
 
 struct ProblemData {
   int num_node_variables;
-  int num_flow_variables;
+  int num_edges;
   std::vector<Node> topology;
   std::vector<Edge> edges;
+  VectorXd linear_edge_cost;
 };
 
 class FlowConstraints {
  public:
-  FlowConstraints(const ProblemData* data) : data_(data) { AssembleConstraintMatrix(); }
+  FlowConstraints(const ProblemData* data) : data_(data) { 
+    AssembleConstraintMatrix(); 
+    MatrixXd matrix = constraint_matrix_ * constraint_matrix_.transpose();
+    Eigen::SparseMatrix<double> sparse_matrix = matrix.sparseView();
+    Eigen::AMDOrdering<int> ordering;
+    Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm;
+    ordering(sparse_matrix, perm); 
+    DUMP(perm * matrix * perm.transpose());
+    DUMP(perm.transpose() * matrix * perm);
+    DUMP(constraint_matrix_);
+
+  }
   VectorXd Evaluate(const VectorXd& x) const { 
     VectorXd y(data_->num_node_variables);
     y.setZero();
@@ -43,7 +66,7 @@ class FlowConstraints {
     
   VectorXd EvaluateTranspose(const VectorXd& x) const { 
     int i = 0;
-    VectorXd y(data_->num_flow_variables);
+    VectorXd y(data_->num_edges);
     y.setZero();
     for (const auto& edge : data_->edges) {
       y(i) =  x(edge.first) - x(edge.second);
@@ -54,7 +77,7 @@ class FlowConstraints {
 
  private:
   void AssembleConstraintMatrix() {
-    constraint_matrix_.resize(data_->num_node_variables, data_->num_flow_variables);
+    constraint_matrix_.resize(data_->num_node_variables, data_->num_edges);
     constraint_matrix_.setZero();
     int i = 0;
     for (const auto& node : data_->topology) {
@@ -75,27 +98,26 @@ class NodeHessians {
  public:
   NodeHessians(const ProblemData* data) : data_(data) {}
   void AssembleAndFactorHessians(const Iterate& iterate)  { 
-    constraint_matrix_.setIdentity(data_->num_flow_variables, data_->num_flow_variables ); 
-    constraint_matrix_(1, 1) = 3;
-    constraint_matrix_(0, 0) = 3;
-  
+    constraint_matrix_ = iterate.flow_variables.array().square().matrix().asDiagonal();
   }
+
   VectorXd EvaluateInverse(const VectorXd& x) const { 
     return constraint_matrix_ * x; 
   }
 
  private:
   MatrixXd constraint_matrix_;
+
   const ProblemData* data_;
 };
 
-
-int SolveForDualVariables(const ProblemData& problem_data,   const Iterate& iterate, 
-                          int iteration_limit) {
+VectorXd SolveForNewtonDirection(const ProblemData& problem_data,   
+                          double inv_sqrt_mu, 
+                          const Iterate& iterate, 
+                          const DualSolverConfig& config) {
 
   FlowConstraints F(&problem_data);
   NodeHessians H(&problem_data); H.AssembleAndFactorHessians(iterate);
-
 
   auto f = [F, H](const VectorXd& s) -> VectorXd { 
     return F.Evaluate(H.EvaluateInverse(F.EvaluateTranspose(s)));
@@ -103,32 +125,40 @@ int SolveForDualVariables(const ProblemData& problem_data,   const Iterate& iter
 
   int num_rows = problem_data.num_node_variables;
   int max_iter = 3;
-  VectorXd b(num_rows); b.setConstant(1);
+  VectorXd b(num_rows); b.setConstant(0);
   /* plant a feasible solution */
-  VectorXd  x(num_rows); x.setConstant(0); x(0) = 1;
-  b = f(x);
-
-  VectorXd s(num_rows); s.setZero();
-  VectorXd r(num_rows); r = b;
-  VectorXd p(num_rows); p = r;
-
-
-  for (int i = 0; i < iteration_limit; i++) {
-    double norm_sqr_r  = r.dot(r);
-    double alpha = norm_sqr_r/p.dot(f(p));
-    s +=  alpha * p;
-    r -=  alpha * f(p);
-    double beta = r.dot(r)/norm_sqr_r;
-    p = r + beta * p;
-    std::cout << "norm: " << r.norm() << std::endl;
-    if (r.norm() < 1e-8) {
-      std::cout << "\nTerminating. ";
-      break;
-    }
+  if (0) {
+    VectorXd  x(num_rows); x.setConstant(0); x(0) = 1;
+    b = f(x);
+  } else {
+    b(0) = 1;
+    b.tail(1)(0) = -1;
   }
-  DUMP(b);
-  DUMP(f(s));
-  DUMP(s);
+
+  VectorXd d = VectorXd::Constant(problem_data.num_edges, 1);
+  VectorXd residual = inv_sqrt_mu *
+            (b  + F.Evaluate(H.EvaluateInverse( problem_data.linear_edge_cost )) ) - 2 * F.Evaluate(iterate.flow_variables);
+  {
+    VectorXd s(num_rows); s.setZero();
+    VectorXd r(num_rows); r = residual;
+    VectorXd p(num_rows); p = r;
+
+    for (int i = 0; i < config.iteration_limit; i++) {
+      double norm_sqr_r  = r.dot(r);
+      double alpha = norm_sqr_r/p.dot(f(p));
+      s +=  alpha * p;
+      r -=  alpha * f(p);
+      double beta = r.dot(r)/norm_sqr_r;
+      p = r + beta * p;
+      std::cout << "norm: " << r.norm() << std::endl;
+      if (r.norm() < 1e-8) {
+        std::cout << "\nTerminating. ";
+        break;
+      }
+    }
+    d -= iterate.flow_variables.cwiseProduct(inv_sqrt_mu * problem_data.linear_edge_cost -F.EvaluateTranspose(s));
+  }
+  return d;
 }
 
 
@@ -172,15 +202,54 @@ vector<Node> MakeNodeList(const vector<Edge>& edge_list, int num_nodes) {
 
 int DoMain() {
   ProblemData problem_data;
-  /*problem_data.edges = LineGraph(3);*/
+  //problem_data.edges = LineGraph(3);
   problem_data.edges = PaperExample();
   problem_data.num_node_variables = GetMaxNodeIndex(problem_data.edges);
-  problem_data.num_flow_variables = problem_data.edges.size();
+  problem_data.num_edges = problem_data.edges.size();
   problem_data.topology = MakeNodeList(problem_data.edges, problem_data.num_node_variables);
   Iterate iterate;
-  SolveForDualVariables(problem_data, iterate, 10);
+  iterate.flow_variables = VectorXd::Constant(problem_data.num_edges, 1);
+  DualSolverConfig config; config.iteration_limit = problem_data.num_edges;
+  problem_data.linear_edge_cost = VectorXd::Constant(problem_data.num_edges, 1);
+
+  double inv_sqrt_mu = 1000;
+  for (int i = 0; i < 20; i++) {
+    VectorXd d = SolveForNewtonDirection(problem_data, inv_sqrt_mu, iterate, config);
+
+    double norminf = (d).array().abs().maxCoeff();
+    if (norminf > 1) {
+      d /= norminf;
+    }
+    iterate.flow_variables = iterate.flow_variables.cwiseProduct(d.array().exp().matrix());
+    DUMP(norminf);
+  }
+
+
+  FlowConstraints F(&problem_data);
+  DUMP(F.Evaluate(iterate.flow_variables * 1.0/ inv_sqrt_mu));
+  DUMP(iterate.flow_variables * 1.0/ inv_sqrt_mu);
+
 }
 }
+
+/*
+ *  min. c(f, x) 
+ *
+ *    Fx = b
+ *    x >= 0
+ *
+ *
+ *  Newton equations:
+ *
+ *  F e^v(1 + d) = b 
+ *  e^{-v}(1 - d) = c - F'y
+ *  
+ * 
+ * F Q(v) F' y = F e^v - (F' Q(v) c + b)
+ *
+ *
+ * W(v)'
+ */
 
 int main() {
   conex::DoMain();
