@@ -37,15 +37,18 @@ struct ProblemData {
 class FlowConstraints {
  public:
   FlowConstraints(const ProblemData* data) : data_(data) { 
-    AssembleConstraintMatrix(); 
-    MatrixXd matrix = constraint_matrix_ * constraint_matrix_.transpose();
+    if (!data) {
+      throw std::runtime_error("Received null pointer.");
+    }
+    MatrixXd constraint_matrix = AssembleConstraintMatrix(*data);
+    MatrixXd matrix = constraint_matrix * constraint_matrix.transpose();
     Eigen::SparseMatrix<double> sparse_matrix = matrix.sparseView();
     Eigen::AMDOrdering<int> ordering;
     Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm;
     ordering(sparse_matrix, perm); 
     DUMP(perm * matrix * perm.transpose());
     DUMP(perm.transpose() * matrix * perm);
-    DUMP(constraint_matrix_);
+    DUMP(constraint_matrix);
 
   }
   VectorXd Evaluate(const VectorXd& x) const { 
@@ -75,22 +78,23 @@ class FlowConstraints {
     return y;
   }
 
- private:
-  void AssembleConstraintMatrix() {
-    constraint_matrix_.resize(data_->num_node_variables, data_->num_edges);
-    constraint_matrix_.setZero();
+  static MatrixXd AssembleConstraintMatrix(const ProblemData& data) {
+    MatrixXd constraint_matrix(data.num_node_variables, data.num_edges);
+    constraint_matrix.setZero();
     int i = 0;
-    for (const auto& node : data_->topology) {
+    for (const auto& node : data.topology) {
       for (const auto& edge : node.incoming_edges) {
-        constraint_matrix_(i, edge) = 1;
+        constraint_matrix(i, edge) = 1;
       }
       for (const auto& edge : node.outgoing_edges) {
-        constraint_matrix_(i, edge) = -1;
+        constraint_matrix(i, edge) = -1;
       }
       ++i;
     }
+    return constraint_matrix;
   }
-  MatrixXd constraint_matrix_;
+ 
+ private:
   const ProblemData* data_;
 };
 
@@ -212,7 +216,7 @@ int DoMain() {
   DualSolverConfig config; config.iteration_limit = problem_data.num_edges;
   problem_data.linear_edge_cost = VectorXd::Constant(problem_data.num_edges, 1);
 
-  double inv_sqrt_mu = 1000;
+  double inv_sqrt_mu = 100;
   for (int i = 0; i < 20; i++) {
     VectorXd d = SolveForNewtonDirection(problem_data, inv_sqrt_mu, iterate, config);
 
@@ -225,11 +229,35 @@ int DoMain() {
   }
 
 
-  FlowConstraints F(&problem_data);
-  DUMP(F.Evaluate(iterate.flow_variables * 1.0/ inv_sqrt_mu));
-  DUMP(iterate.flow_variables * 1.0/ inv_sqrt_mu);
-
 }
+
+void TestFlowConstraints() {
+
+  ProblemData problem_data;
+  problem_data.edges = PaperExample();
+  problem_data.num_node_variables = GetMaxNodeIndex(problem_data.edges);
+  problem_data.num_edges = problem_data.edges.size();
+  problem_data.topology = MakeNodeList(problem_data.edges, problem_data.num_node_variables);
+
+  FlowConstraints F(&problem_data);
+  MatrixXd Fmat = FlowConstraints::AssembleConstraintMatrix(problem_data);
+  double eps = 1e-15;
+  for (int i = 0; i < 10; i++) {
+    MatrixXd test(Fmat.cols(), 1); test.setRandom();
+    double error = (Fmat * test - F.Evaluate(test) ).norm();
+    if (error > eps) {
+      throw std::runtime_error("Test failed");
+    }
+  }
+  for (int i = 0; i < 10; i++) {
+    MatrixXd test(Fmat.rows(), 1); test.setRandom();
+    double error = (Fmat.transpose() * test - F.EvaluateTranspose(test) ).norm();
+    if (error > eps) {
+      throw std::runtime_error("Test failed");
+    }
+  }
+}
+
 }
 
 /*
@@ -251,6 +279,9 @@ int DoMain() {
  * W(v)'
  */
 
+
+
 int main() {
   conex::DoMain();
+  conex::TestFlowConstraints();
 }
