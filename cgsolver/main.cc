@@ -276,6 +276,15 @@ void TestFlowConstraints() {
  * F Q(v) F' y = F e^v - (F' Q(v) c + b)
  *
  *
+ *
+ *   A'Q(v) A f =  e^v - (Q(v) c + b)  - Q(-v) B' v
+ *   f = e^{-v} - (c + Q(-v) b) - Q(-v) B' v
+ *
+ *   B Q(-v) B' v = e^{-v} - c ---
+ *
+ *  
+ *
+ *
  * W(v)'
  */
 
