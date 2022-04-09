@@ -1,5 +1,5 @@
 import numpy as np
-from pydrake.all import MathematicalProgram, MosekSolver, OsqpSolver, eq
+from pydrake.all import MathematicalProgram, MosekSolver, OsqpSolver,  eq
 
 class ShortestPathVariables():
 
