@@ -46,10 +46,6 @@ class FlowConstraints {
     Eigen::AMDOrdering<int> ordering;
     Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm;
     ordering(sparse_matrix, perm); 
-    DUMP(perm * matrix * perm.transpose());
-    DUMP(perm.transpose() * matrix * perm);
-    DUMP(constraint_matrix);
-
   }
   VectorXd Evaluate(const VectorXd& x) const { 
     VectorXd y(data_->num_node_variables);
@@ -259,36 +255,6 @@ void TestFlowConstraints() {
 }
 
 }
-
-/*
- *  min. c(f, x) 
- *
- *    Fx = b
- *    x >= 0
- *
- *
- *  Newton equations:
- *
- *  F e^v(1 + d) = b 
- *  e^{-v}(1 - d) = c - F'y
- *  
- * 
- * F Q(v) F' y = F e^v - (F' Q(v) c + b)
- *
- *
- *
- *   A'Q(v) A f =  e^v - (Q(v) c + b)  - Q(-v) B' v
- *   f = e^{-v} - (c + Q(-v) b) - Q(-v) B' v
- *
- *   B Q(-v) B' v = e^{-v} - c ---
- *
- *  
- *
- *
- * W(v)'
- */
-
-
 
 int main() {
   conex::DoMain();
