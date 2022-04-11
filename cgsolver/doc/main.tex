@@ -87,11 +87,10 @@ of each edge is a constant function, independent of the path $\pi$.
 A recent generalization considers a richer class of weight functions,
 defined by associating each vertex $v \in V$ with a convex set $X_v \subseteq \mathbb{R}^n$ 
 and each  edge $e \in E$ with a convex function 
-$l_e : \mathbb{R}^n \times \mathbb{R}^n \rightarrow \mathbb{R}$.
-Each edge $e = (e_1, e_2)$ is assigned a weight $l_e(x_{e_1}, x_{e_2})$ 
-using a set of point $x_v \in X_v$.  This generalized shortest-path problem  is the selection of a
-path $\pi$ and points $\{x_v \in X_v\}_{v \in V}$ that together minimize the cumulative sum of edge-weights.
-The path in turn is called the \emph{shortest path} in the \emph{graph of convex sets} 
+$l_e : \mathbb{R}^n \times \mathbb{R}^n \rightarrow \mathbb{R}$;
+given a set of points $\{x_v \in X_v\}_{v \in V}$, each edge $e = (e_1, e_2)$ is assigned a weight $l_e(x_{e_1}, x_{e_2})$.
+One then seeks a path $\pi$ and point-set $\{x_v \in X_v\}_{v \in V}$ that together minimize the cumulative sum of edge-weights.
+The path in turn is called the shortest path in the \emph{graph-of-convex-sets} 
 defined by $X_v$ and $G$.
 
 As shown in~\cite{}, the shortest path in a graph of convex sets can be found using mixed-integer convex optimization.
@@ -143,7 +142,7 @@ In this notation, the relaxation takes the form
                       & (F_{in} \otimes I_d)  y - (F_{out} \otimes I_d) z  = 0\\
   \end{aligned}
 \end{align}
-where $y \in \mathbb{R}^{ d |E|} $ and $z \in \mathbb{R}^{ d |E|}$ denote the concatenation of the $y_e$ and $z_e$
+where $y \in \mathbb{R}^{ n |E|} $ and $z \in \mathbb{R}^{ n |E|}$ denote the concatenation of the $y_e$ and $z_e$
 into vectors, and $s \in \mathbb{R}^{|V|}$ is a slack variable for the degree constraint. 
 
 
@@ -151,17 +150,17 @@ into vectors, and $s \in \mathbb{R}^{|V|}$ is a slack variable for the degree co
 The convex relaxation~\eqref{cp:coneRelax} is a special case of the standard-form cone-programming problem
 \begin{align}~\label{cp:standardForm}
   \begin{aligned}
-    \minimize_{x} &   f(x)\\
+    \minimize \;\; &   f(x)\\
     \mbox{subject to } & Ax + b \in \coneName
                        & Fx = g
   \end{aligned}
 \end{align}
 The barrier method solves~\eqref{cp:standardForm} by
-replacing the $Ax + b \in \coneName$ with a penalty function  
+replacing the constraint $Ax + b \in \coneName$ with a penalty function  
 $g_K : \inter \coneName \rightarrow \mathbb{R}$ and iteratively solving the optimality conditions of
 \begin{align}~\label{qp:barrier}
   \begin{aligned}
-    \minimize_{x} &   f(x) + \mu g_{\coneName}(Ax+b) \\
+    \minimize \;\; &   f(x) + \mu g_{\coneName}(Ax+b) \\
     \mbox{subject to } 
                        & Fx = g
   \end{aligned}
@@ -194,8 +193,9 @@ when~\eqref{cp:standardForm} is the convex relaxation~\eqref{cp:coneRelax}.
 \subsection{Sparsity of the Newton system}
 Recall the convex relaxation~\eqref{cp:coneRelax} is stated in terms of variables
 $(y_e, z_e, \phi_e)_{e \in E}$ indexed by edges $E$ and variable $s \in \mathbb{R}^{|V|}$ indexed by vertices $V$.
-Letting $w \in \mathbb{R}^{(2d+1)|E|}$ denote the concatenation of $(y_e, z_e, \phi_e)_{e \in E}$
-and $x$ denote the decision variables $(w, s)$, the matrix of the Newton system~\eqref{eq:kktsystem} takes the form
+Letting $w \in \mathbb{R}^{(2n+1)|E|}$ denote the concatenation of $(y_e, z_e, \phi_e)_{e \in E}$
+and $x$ denote the decision variables $(w, s)$, the 
+matrix of the Newton system~\eqref{eq:kktsystem} takes the form
 \begin{align}
   \begin{bmatrix}
     \nabla^2 f_\mu(x)  & F^T  \\
@@ -221,7 +221,8 @@ G_e =
 &   b_u^T Q^e_u A_u    & b_v^T Q^e_v A_v      &  k_e  \cr
  }
 \]
-where $k_{e}$ and  $Q^e_p$ for $p \in \{u, v\}$ denote Hessians of chosen barrier functions
+where $k_{e}$ and  $Q^e_p$ for $p \in \{u, v\}$ are constructed from the Hessians
+of the chosen barrier functions
 for the $1 \ge \phi_e \ge 0$ and spatial constraints.
 Finally, $\nabla^2 \tilde l_e$ denotes the Hessian of  the edge-cost function $\tilde l_e(y_e, z_e, \varphi_e)$
 (assumed to be twice differentiable).
