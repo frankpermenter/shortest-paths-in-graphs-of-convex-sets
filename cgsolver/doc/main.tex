@@ -81,19 +81,20 @@ the \emph{perspective} of $X \subseteq \mathbb{R}^n$, defined as
 
 \section{Shortest paths in graphs of convex sets}
 Given a directed graph $G(V, E)$ the \emph{shortest path} between $s, t \in V$
-is a collection of edges $p \subseteq E$ connecting $s$ and $t$ that have minimum cumulative weight.
+is a collection of edges $\pi \subseteq E$ connecting $s$ and $t$ that have minimum cumulative weight.
 In the classical statement of this problem, the weight
 of each edge is a constant function, independent of the path $\pi$. 
 A recent generalization considers a richer class of weight functions,
 defined by associating each vertex $v \in V$ with a convex set $X_v \subseteq \mathbb{R}^n$ 
 and each  edge $e \in E$ with a convex function 
-$l_e : \mathbb{R}^n \times \mathbb{R}^n \rightarrow \mathbb{R}$;
-given a set of points $\{x_v \in X_v\}_{v \in V}$, each edge $e = (e_1, e_2)$ is assigned a weight $l_e(x_{e_1}, x_{e_2})$.
-One then seeks a path $\pi$ and point-set $\{x_v \in X_v\}_{v \in V}$ that together minimize the cumulative sum of edge-weights.
-The path in turn is called the shortest path in the \emph{graph-of-convex-sets} 
-defined by $X_v$ and $G$.
+$l_e : \mathbb{R}^n \times \mathbb{R}^n \rightarrow \mathbb{R}$.
+To assign weights, one first selects a set of points $\{x_v \in X_v\}_{v \in V}$
+and next evaluates $l_e(x_{u}, x_{v})$ for each edge $e = (u, v) \in E$.
+The shortest-path problem seeks a path $\pi$ and point-set $\{x_v \in X_v\}_{v \in V}$ that minimize
+the cumulative sum of edge-weights.  An optimal path is called the shortest path in the \emph{graph-of-convex-sets} 
+defined by $\{X_v\}_{v\in V}$ and $G$.
 
-As shown in~\cite{}, the shortest path in a graph of convex sets can be found using mixed-integer convex optimization.
+As shown in~\cite{}, shortest paths in graphs-of-convex-sets  can be found using mixed-integer convex optimization.
 The specific formulation uses \emph{flow variables} $\phi_e \in \mathbb{R}$ and a pair of spatial
 variables $(y_e, z_e) \in \mathbb{R}^n \times \mathbb{R}^n$ for each edge.
 It minimizes the perspective $\tilde l_e(y, z, \varphi)$ of the edge-cost $l_e$
@@ -101,13 +102,13 @@ subject to spatial, flow, and degree constraints.
 These constraints in turn are defined by the set of incoming and outgoing edges for each vertex $v \in V$,
 denoted $E^{in}_v \subseteq E$ and $E^{out}_v \subseteq E$, respectively.
 Letting $s, t \in \mathcal{V}$ denote the desired end-points of the path and $\delta_{uv}$
-denote the Kronecker delta, the formulation can be stated as follows:
+the Kronecker delta, the formulation is stated as follows:
 \begin{subequations}\label{eq:shortest_path}
   \begin{align}
   \minimize_{y_e, z_e, \phi_e, s_v} &\sum_{e\in E}\tilde l_e(y_e, z_e, \varphi_e) \nonumber \\
   \mbox{subject to }  
   & (y_e, \varphi_e) \in \tilde{ X_u},    (z_e, \varphi_e) \in \tilde{ X_v}  &\forall  e=(u, v) \in E \label{eq:spatialConstraint}\\
-  & \sum_{e \in E^{in}_v} \varphi_e + \delta_{sv} = \sum_{e \in E^{out}_v} \varphi_e + \delta_{tv} + s_v = 1, s_v \ge 0 &\forall v \in V  \label{eq:conservationFlow}\\
+  & \sum_{e \in E^{in}_v} \varphi_e + \delta_{sv} = \sum_{e \in E^{out}_v} \varphi_e + \delta_{tv} \le 1 &\forall v \in V  \label{eq:conservationFlow}\\
   & \sum_{e \in E^{out}_v} y_e = \sum_{e \in E^{in}_v} z_e &\forall v \in V - \{s, t\}   \label{eq:spatialConservationFlow}\\ 
   & \varphi_e \in \{0, 1\}  & \forall  e \in E  \label{eq:booleanConstraints}
   \end{align}
@@ -134,17 +135,22 @@ convex cone $\coneName_v \subseteq \mathcal{V}_v$ and a vector $b_v \in \mathcal
 In this notation, the relaxation takes the form
 \begin{align}~\label{cp:coneRelax}
   \begin{aligned}
-    \minimize_{y_e, z_e, \phi_e, s_e} & \sum_{e \in E}\tilde l_e\\
+    \minimize_{y_e, z_e, \phi_e, s_e} & \sum_{e \in E}\tilde l_e(y_e, z_e, \phi_e)\\
     \mbox{subject to } &A_u y_e + b_u \varphi_e \in \coneName_u ,  A_v z_e + b_v \varphi_e \in \coneName_v  & \forall e = (u, v) \in E \\
                       & 1 \ge \varphi \ge 0,  \\
-                      & F_{in} \varphi  + s   = 1, s \ge 0\\
-                      & (F_{in} - F_{out}) \varphi  = f\\
-                      & (F_{in} \otimes I_d)  y - (F_{out} \otimes I_d) z  = 0\\
+                      & F^{in} \varphi  + s   = f_1, s \ge 0\\
+                      & (F^{in} - F^{out}) \varphi  = f_2\\
+                      & (F^{in} \otimes I_n)  y - (F^{out} \otimes I_n) z  = 0\\
   \end{aligned}
 \end{align}
 where $y \in \mathbb{R}^{ n |E|} $ and $z \in \mathbb{R}^{ n |E|}$ denote the concatenation of the $y_e$ and $z_e$
 into vectors, and $s \in \mathbb{R}^{|V|}$ is a slack variable for the degree constraint. 
-
+The matrices $F^{in} \in \mathbb{R}^{|V| \times |E|}$ 
+and $F^{out} \in \mathbb{R}^{|V| \times |E|}$ are the incidence matrices for incoming and outgoing edges respectively.
+Precisely, $[F^{in}]_{ve} = 1$ if edge $e \in E^{in}_{v}$ and is otherwise zero;
+similarly, $[F^{out}]_{ve} = 1$ if edge $e \in E^{out}_{v}$ and is otherwise zero.
+Finally, $I_n \in \mathbb{R}^{n \times n}$ denotes the identity matrix of order $n$,
+and $f_1 \in \mathbb{R}^{|V|}$ and $f_2\in \mathbb{R}^{|V|}$ are constants set according to~\eqref{eq:conservationFlow} .
 
 \subsection{Barrier methods}
 The convex relaxation~\eqref{cp:coneRelax} is a special case of the standard-form cone-programming problem
@@ -189,13 +195,27 @@ $x \leftarrow x + \Delta x$ where $\Delta x$ solves, for some $\lambda$, the fol
 \end{align}
 We are interested in efficient solution of such systems
 when~\eqref{cp:standardForm} is the convex relaxation~\eqref{cp:coneRelax}.
+In this case, we'll see that  $f_\mu(x)$ is
+always block diagonal and $F$ is sparse when the graph $G$ has few edges. This in turn allows us to efficiently invert
+the positive definite Schur complement matrix $F (\nabla^2 f_\mu(x))^{-1} F^T$
+using  the conjugate-gradient method.
 
 \subsection{Sparsity of the Newton system}
-Recall the convex relaxation~\eqref{cp:coneRelax} is stated in terms of variables
-$(y_e, z_e, \phi_e)_{e \in E}$ indexed by edges $E$ and variable $s \in \mathbb{R}^{|V|}$ indexed by vertices $V$.
-Letting $w \in \mathbb{R}^{(2n+1)|E|}$ denote the concatenation of $(y_e, z_e, \phi_e)_{e \in E}$
-and $x$ denote the decision variables $(w, s)$, the 
-matrix of the Newton system~\eqref{eq:kktsystem} takes the form
+
+%The objective of the barrier subproblem  takes the form
+%\[
+%  f_{\mu}(x) =  \sum_{e \in E}\tilde l_e + \mu \sum_{e \in E}  f^{s}_{e}(y_e, z_e, \varphi_e) + \sum_{v \in v}  f^{s}_{e}(y_e, z_e, \varphi_e) 
+%\]
+%where $f^s_e$ denotes barrier terms for the spatial inequalities for edge $e$, i.e., for $e = (u, v)$
+%we have $f^s_e :=  g_{\coneName_u} (A_u y_e + b_u \varphi_e)  + g_{\coneName_v}(A_v z_e + b_v \varphi_e)$.
+
+Recall that the convex relaxation~\eqref{cp:coneRelax} consists
+of a set of edge variables $(y_e , z_e, \phi_e) \in
+\mathbb{R}^n \times \mathbb{R}^n \times \mathbb{R}$ for each $e \in E$
+and a vector $s \in \mathbb{R}^{|V|}$ for the vertex degree constraints.  By letting $w \in
+\mathbb{R}^{(2n+1)|E|}$ denote the concatenation of $(y_e, z_e, \phi_e)_{e \in
+E}$, we can express the matrix of the Newton system~\eqref{eq:kktsystem}
+as follows:
 \begin{align}
   \begin{bmatrix}
     \nabla^2 f_\mu(x)  & F^T  \\
@@ -206,12 +226,12 @@ matrix of the Newton system~\eqref{eq:kktsystem} takes the form
   &  0  & \diag(d_v)_{v \in V}   & I & 0\cr
   &  F_1  & I & 0  & 0 \cr
   &  F_2  & 0 & 0  & 0\cr
-  }
+  },
 \end{align}
-Here,  $F_1$ and $F_2$ are sparse matrices, constructed from the node-edge incidence matrices $F_{in}$ and $F_{out}$.
-The matrix $\diag(d_v)_{v \in V}$ is diagonal, where $d_v$ denotes barrier terms for the vertex degree constraints $1 \ge s_v \ge 0$.
-Finally, $\diag(G_e)_{e \in E}$ is a block-diagonal matrix, 
-where each block $G_e$ encodes objective and barrier terms for $(y_e, z_e, \phi_e)_{e \in E}$. For each edge $e=(u,v)$, the block $G_e$ has form:
+where $x = (w, s)$ and $\lambda = (\lambda_1, \lambda_2)$.  Here,  $F_1$ and $F_2$ are sparse matrices, constructed from the node-edge incidence matrices $F^{in}$ and $F^{out}$.
+The diagonal matrix $\diag(d_v)_{v \in V}$  consists of barrier terms $d_v$ for the degree constraints at vertex $v$.
+Finally, the block-diagonal matrix $\diag(G_e)_{e \in E}$ consists
+of blocks $G_e \in \mathbb{R}^{ (2d + 1) \times (2d+1)}$ encoding objective and barrier terms for $(y_e, z_e, \phi_e)_{e \in E}$. For each edge $e=(u,v)$, the block $G_e$ has form:
 \[
 G_e =
 \nabla^2 \tilde l_e(y_e, z_e, \varphi_e) +
@@ -221,11 +241,11 @@ G_e =
 &   b_u^T Q^e_u A_u    & b_v^T Q^e_v A_v      &  k_e  \cr
  }
 \]
-where $k_{e}$ and  $Q^e_p$ for $p \in \{u, v\}$ are constructed from the Hessians
-of the chosen barrier functions
-for the $1 \ge \phi_e \ge 0$ and spatial constraints.
-Finally, $\nabla^2 \tilde l_e$ denotes the Hessian of  the edge-cost function $\tilde l_e(y_e, z_e, \varphi_e)$
-(assumed to be twice differentiable).
+where   $Q^e_u$  and $Q^e_p$ arise from the Hessians
+of the barrier functions used for spatial constraints,
+and $k_{e}$ is constructed from the barrier for $1 \ge \phi_e \ge 0$.
+Finally, $\nabla^2 \tilde l_e$ denotes the Hessian of  the edge-cost function $\tilde l_e(y_e, z_e, \varphi_e)$,
+when it is twice differentiable.
 
 
 
