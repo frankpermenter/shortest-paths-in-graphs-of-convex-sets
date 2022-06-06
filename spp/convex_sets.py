@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from itertools import product
 from scipy.spatial import ConvexHull, HalfspaceIntersection
-from pydrake.all import Expression, MathematicalProgram, MosekSolver, OsqpSolver, eq, le
+from pydrake.all import Expression, MathematicalProgram, MosekSolver, eq, le
 
 class ConvexSet():
 

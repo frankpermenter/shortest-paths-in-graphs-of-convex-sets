@@ -5,6 +5,7 @@ export PYTHONPATH="${PYTHONPATH}:/home/frank/drake-build/install/lib/python3.6/s
 
 #set path=$PWD
 #cd $path
-python3 run.py
+#python3 toy_example.py
+python3 stepping_stones.py
 #python3 simple.py
 
